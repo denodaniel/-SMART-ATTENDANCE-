@@ -1,1 +1,2 @@
 # -SMART-ATTENDANCE-
+The facial recognition attendance system is designed to automate the process of recording attendance using a live video feed. This system detects and recognizes employees based on stored facial images, then logs their attendance in a CSV file. The implementation utilizes OpenCV for video processing, face_recognition for facial recognition, and CSV for attendance record-keeping.
