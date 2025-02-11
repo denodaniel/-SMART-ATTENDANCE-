@@ -1,0 +1,127 @@
+import numpy as np
+import cv2
+import csv
+import os
+from datetime import datetime
+import face_recognition
+
+# Initialize video capture
+video_capture = cv2.VideoCapture(0)
+
+# Load and encode known faces
+ronaldinho_image = face_recognition.load_image_file(r"C:\Users\Deno Daniel\Downloads\employee pics\Ronaldinho.jpg")
+ronaldinho_encoding = face_recognition.face_encodings(ronaldinho_image)[0]
+
+messi_image = face_recognition.load_image_file(r"C:\Users\Deno Daniel\Downloads\employee pics\messi.jpg")
+messi_encoding = face_recognition.face_encodings(messi_image)[0]
+
+ronaldo_image = face_recognition.load_image_file(r"C:\Users\Deno Daniel\Downloads\employee pics\ronaldo.jpg")
+ronaldo_encoding = face_recognition.face_encodings(ronaldo_image)[0]
+
+bekham_image = face_recognition.load_image_file(r"C:\Users\Deno Daniel\Downloads\employee pics\bekham.jpg")
+bekham_encoding = face_recognition.face_encodings(bekham_image)[0]
+
+deno_image = face_recognition.load_image_file(r"C:\Users\Deno Daniel\Downloads\employee pics\deno.jpg")
+deno_encoding = face_recognition.face_encodings(deno_image)[0]
+
+
+known_face_encodings = [
+    ronaldinho_encoding,
+    messi_encoding,
+    ronaldo_encoding,
+    bekham_encoding,
+    deno_encoding
+]
+
+known_face_names = [
+    "Ronaldinho",
+    "Messi",
+    "Ronaldo",
+    "Bekham",
+    "BOSS",
+]
+
+# Copy of employees for attendance tracking
+employees = known_face_names.copy()
+
+# Initialize variables
+face_locations = []
+face_encodings = []
+face_names = []
+process_this_frame = True
+
+# Get current date for CSV filename
+now = datetime.now()
+current_date = now.strftime("%Y-%m-%d")
+
+# Open CSV file for writing
+with open(current_date + '.csv', 'w+', newline='') as f:
+    lnwriter = csv.writer(f)
+    lnwriter.writerow(["Name", "Time"])  # Header row
+
+    while True:
+        # Capture video frame
+        ret, frame = video_capture.read()
+        if not ret:
+            break
+
+        # Resize frame for faster processing
+        small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
+        rgb_small_frame = small_frame[:, :, ::-1]
+
+        if process_this_frame:
+            # Find all face locations and encodings in the current frame
+            face_locations = face_recognition.face_locations(rgb_small_frame)
+            face_encodings = face_recognition.face_encodings(rgb_small_frame, face_locations)
+
+            face_names = []
+            for face_encoding in face_encodings:
+                # Check if the face matches any known faces
+                matches = face_recognition.compare_faces(known_face_encodings, face_encoding)
+                name = "Unknown"
+
+                # Use the known face with the smallest distance if a match is found
+                face_distances = face_recognition.face_distance(known_face_encodings, face_encoding)
+                best_match_index = np.argmin(face_distances)
+                if matches[best_match_index]:
+                    name = known_face_names[best_match_index]
+
+                face_names.append(name)
+
+                # Mark attendance if the person is recognized
+                if name in known_face_names and name in employees:
+                    employees.remove(name)
+                    current_time = datetime.now().strftime("%H:%M:%S")
+                    lnwriter.writerow([name, current_time])
+                    print(f"{name} marked present at {current_time}")
+
+        # Toggle frame processing (process every other frame)
+        process_this_frame = not process_this_frame
+
+        # Display the results
+        for (top, right, bottom, left), name in zip(face_locations, face_names):
+            # Scale back up face locations since the frame was resized
+            top *= 4
+            right *= 4
+            bottom *= 4
+            left *= 4
+
+            # Draw a box around the face
+            cv2.rectangle(frame, (left, top), (right, bottom), (0, 0, 255), 2)
+
+            # Draw a label with a name below the face
+            cv2.rectangle(frame, (left, bottom - 35), (right, bottom), (0, 0, 255), cv2.FILLED)
+            font = cv2.FONT_HERSHEY_DUPLEX
+            cv2.putText(frame, name, (left + 6, bottom - 6), font, 1.0, (255, 255, 255), 1)
+
+        # Display the video frame
+        cv2.imshow("Attendance System", frame)
+
+        # Break the loop if 'q' is pressed
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+# Release video capture and close OpenCV windows
+video_capture.release()
+cv2.destroyAllWindows()
+
