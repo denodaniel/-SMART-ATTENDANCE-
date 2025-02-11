@@ -1,0 +1,135 @@
+1. Importing Required Libraries
+
+import numpy as np
+import cv2
+import csv
+import os
+from datetime import datetime
+import face_recognition
+
+These libraries provide functionalities such as video capture, face recognition, and data handling.
+
+2. Video Capture Initialization
+
+video_capture = cv2.VideoCapture(0)
+
+Initializes the webcam for capturing real-time video.
+
+0 refers to the default webcam.
+
+3. Loading and Encoding Known Faces
+
+ronaldinho_image = face_recognition.load_image_file("path/to/image.jpg")
+ronaldinho_encoding = face_recognition.face_encodings(ronaldinho_image)[0]
+
+Loads images of known employees.
+
+Extracts and stores facial encodings for comparison.
+
+The face_encodings() function generates a numerical representation of the face.
+
+4. Creating a List of Known Faces
+
+known_face_encodings = [ronaldinho_encoding, messi_encoding, ronaldo_encoding, bekham_encoding, deno_encoding]
+
+known_face_names = ["Ronaldinho", "Messi", "Ronaldo", "Bekham", "BOSS"]
+
+The system maintains a list of facial encodings and corresponding employee names for identification.
+
+5. Initializing Attendance Tracking
+
+employees = known_face_names.copy()
+now = datetime.now()
+current_date = now.strftime("%Y-%m-%d")
+
+Copies employee names for tracking attendance.
+
+Extracts the current date to create a CSV file for that day's attendance.
+
+6. Writing to the CSV File
+
+with open(current_date + '.csv', 'w+', newline='') as f:
+    lnwriter = csv.writer(f)
+    lnwriter.writerow(["Name", "Time"])
+
+Creates or opens a CSV file with the current date as the filename.
+
+Writes a header row containing "Name" and "Time".
+
+7. Processing the Video Feed
+
+while True:
+    ret, frame = video_capture.read()
+    if not ret:
+        break
+
+Reads frames from the webcam.
+
+If reading fails, the loop breaks.
+
+8. Resizing Frames for Faster Processing
+
+small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
+rgb_small_frame = small_frame[:, :, ::-1]
+
+Reduces frame size by 75% to optimize face detection speed.
+
+Converts BGR (OpenCV format) to RGB (face_recognition format).
+
+9. Face Detection and Recognition
+
+face_locations = face_recognition.face_locations(rgb_small_frame)
+face_encodings = face_recognition.face_encodings(rgb_small_frame, face_locations)
+
+Detects faces in the frame and extracts their encodings.
+
+10. Matching Detected Faces with Known Faces
+
+for face_encoding in face_encodings:
+    matches = face_recognition.compare_faces(known_face_encodings, face_encoding)
+    face_distances = face_recognition.face_distance(known_face_encodings, face_encoding)
+    best_match_index = np.argmin(face_distances)
+
+Compares detected faces with stored face encodings.
+
+Finds the best match by selecting the smallest distance.
+
+11. Marking Attendance
+
+if matches[best_match_index]:
+    name = known_face_names[best_match_index]
+    if name in employees:
+        employees.remove(name)
+        current_time = datetime.now().strftime("%H:%M:%S")
+        lnwriter.writerow([name, current_time])
+        print(f"{name} marked present at {current_time}")
+
+If a match is found, the person's attendance is recorded with a timestamp.
+
+Prevents duplicate entries by removing the name from the employees list.
+
+12. Displaying Results
+
+cv2.rectangle(frame, (left, top), (right, bottom), (0, 0, 255), 2)
+cv2.putText(frame, name, (left + 6, bottom - 6), cv2.FONT_HERSHEY_DUPLEX, 1.0, (255, 255, 255), 1)
+cv2.imshow("Attendance System", frame)
+
+Draws a red box around detected faces.
+
+Displays names below recognized faces.
+
+Opens a window showing the live video feed.
+
+13. Exiting the Program
+
+if cv2.waitKey(1) & 0xFF == ord('q'):
+    break
+
+Pressing 'q' exits the program.
+
+14. Cleanup and Release Resources
+
+video_capture.release()
+cv2.destroyAllWindows()
+
+Stops the webcam and closes all OpenCV windows.
